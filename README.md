@@ -29,6 +29,24 @@ curl -fsSL https://raw.githubusercontent.com/AloreBB/claude-statusline/main/inst
 
 Las barras pasan de verde a amarillo a rojo según se llenan.
 
+### Saludo y mascota
+
+La línea 1 termina con un saludo según la hora. Antes del dato, una mascota reacciona a la sesión con una frase que cambia cada 30 s:
+
+| Cara | Cuándo |
+|---|---|
+| `(ﾟДﾟ;)` | límite de 5h por encima del 90 % |
+| `(⊙_⊙)?` | justo después de un `/compact` |
+| `(._.)` / `\(^o^)/` | el PR de la rama tiene cambios pedidos / está aprobado |
+| `(×_×)` | contexto por encima del 80 % |
+| `(°_°;)` | más de 500 líneas cambiadas en la sesión |
+| `(-_-) zzz` | el caché del prompt expiró (el próximo mensaje cuesta más) |
+| `ε=ε=(ノ≧∇≦)ノ` | fast mode |
+| `(￣o￣) zzZ` | entre las 0 y las 5h |
+| `(•̀ᴗ•́)✎` / `(•_•)` | vim en INSERT / otro modo |
+| `(°_°)` | contexto por encima del 50 % |
+| `(•‿•)` | todo bien |
+
 ### Fuentes del dato
 
 | Icono | Fuente | Se refresca |
