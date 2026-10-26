@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/AloreBB/claude-statusline/main/inst
 | Línea | Contenido |
 |---|---|
 | 1 | `●●●` · `alore.` · directorio · `⎇ rama` (click abre el repo) · worktree |
-| 2 | `✦ modelo` · effort `●●●○○` · contexto `▰▰▰▱▱` usados/total % · `Σ` tokens totales |
+| 2 | `✦ modelo` · effort `●●●○○` · contexto `▰▰▰▱▱` usados/total % (`⚠ compacta pronto` desde el 80 %, ajustable en `COMPACT_WARN_PCT`) · `Σ` tokens totales · líneas cambiadas en la sesión `+156 −23` |
 | 3 | `◷ reset` del límite de 5h · barra de uso (solo con suscripción) |
 | 4 | Dato del momento; click abre el artículo |
 
