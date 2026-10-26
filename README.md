@@ -13,7 +13,7 @@ Status line para Claude Code con la paleta de [alore.dev](https://alore.dev) y u
 | 1 | `●●●` · `alore.` · directorio · `⎇ rama` (cmd/ctrl+click abre el repo en el navegador) · worktree |
 | 2 | `✦ modelo` · effort `●●●○○` · contexto `▰▰▰▱▱` usados/total % · `Σ` tokens totales |
 | 3 | `◷ reset` del límite de 5h · barra de uso (solo con suscripción) |
-| 4 | Dato del momento (ver fuentes) |
+| 4 | Dato del momento (ver fuentes); cmd/ctrl+click abre el artículo completo |
 
 Las barras pasan de verde a amarillo a rojo según se llenan.
 

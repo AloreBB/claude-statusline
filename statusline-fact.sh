@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Picks a fresh "did you know" line for the status line from live sources.
 # Run by a UserPromptSubmit hook (in background) on every message; writes
-# "<tag>\t<text>" to $CACHE/fact, which statusline.sh renders.
+# "<tag>\t<text>\t<url>" to $CACHE/fact, which statusline.sh renders (url = full article).
 #
 # Sources (cached so most runs are a local pick, not a request):
 #   history  — Wikipedia ES "on this day" events (refreshed daily, ~60 items/day)
@@ -43,6 +43,12 @@ fetch() {
 # surrounding bytes into a new sequence (\xc2\xc2\x9b\x9b -> \xc2\x9b).
 strip_controls() { LC_ALL=C tr -d '\000-\037\177' | LC_ALL=C sed $'s/\xc2[\x80-\x9f]/?/g'; }
 
+# Percent-encode non-ASCII bytes and spaces in a URL (some feeds ship raw UTF-8 in links)
+encode_url() {
+  LC_ALL=C awk 'BEGIN { for (i = 128; i < 256; i++) hex[sprintf("%c", i)] = sprintf("%%%02X", i) }
+    { out = ""; for (i = 1; i <= length($0); i++) { c = substr($0, i, 1); out = out (c in hex ? hex[c] : c == " " ? "%20" : c) } print out }'
+}
+
 # Trim to MAX_LEN at a word boundary
 shorten() {
   awk -v max="$MAX_LEN" '{
@@ -55,14 +61,15 @@ shorten() {
 fact_history() {
   local f="$CACHE/onthisday-$(date +%m%d).json"
   fetch "https://api.wikimedia.org/feed/v1/wikipedia/es/onthisday/all/$(date +%m/%d)" "$f" 1440 || return 1
-  jq -r '((.selected // []) + (.events // []))[] | "\(.year)\t\(.text)"' "$f" |
-    pick | awk -F'\t' '{ printf "hoy en %s\t%s\n", $1, $2 }'
+  # pages[0] is the event's main subject
+  jq -r '((.selected // []) + (.events // []))[]
+         | "hoy en \(.year)\t\(.text)\t\(.pages[0].content_urls.desktop.page // "")"' "$f" | pick
 }
 
 fact_trending() {
   local f="$CACHE/featured-$(date +%Y%m%d).json"
   fetch "https://api.wikimedia.org/feed/v1/wikipedia/es/featured/$(date +%Y/%m/%d)" "$f" 1440 || return 1
-  jq -r '(.mostread.articles // [])[] | select(.description) | "tendencia\t\(.titles.normalized) — \(.description)"' "$f" | pick
+  jq -r '(.mostread.articles // [])[] | select(.description) | "tendencia\t\(.titles.normalized) — \(.description)\t\(.content_urls.desktop.page // "")"' "$f" | pick
 }
 
 fact_tip() {
@@ -85,19 +92,22 @@ fact_tip() {
   local page
   page=$(pick <"$dir/installed.txt")
   [ -n "$page" ] || return 1
+  local url
+  url="https://github.com/tldr-pages/tldr/blob/main/pages.es/$(basename "$(dirname "$page")")/$(basename "$page")"
   # Pair each "- description:" with its `command`, pick one example
-  awk -v name="$(head -1 "$page" | sed 's/^# //')" '
+  awk -v name="$(head -1 "$page" | sed 's/^# //')" -v url="$url" '
     /^- / { d = substr($0, 3); sub(/:$/, "", d); next }
-    /^`/  { c = $0; gsub(/`/, "", c); gsub(/\{\{|\}\}/, "", c); print "tip " name "\t" d ": " c }
+    /^`/  { c = $0; gsub(/`/, "", c); gsub(/\{\{|\}\}/, "", c); print "tip " name "\t" d ": " c "\t" url }
   ' "$page" | pick
 }
 
 fact_hn() {
-  local f="$CACHE/hn-top.json" id title
+  local f="$CACHE/hn-top.json" id
   fetch "https://hacker-news.firebaseio.com/v0/topstories.json" "$f" 60 || return 1
   id=$(jq -r '.[:30][]' "$f" | pick)
-  title=$(curl -sf -m 5 "https://hacker-news.firebaseio.com/v0/item/$id.json" | jq -r '.title // empty') || return 1
-  [ -n "$title" ] && printf 'hacker news\t%s\n' "$title"
+  # Link the article itself; Ask/Show HN posts have no url, so fall back to the discussion
+  curl -sf -m 5 "https://hacker-news.firebaseio.com/v0/item/$id.json" |
+    jq -r 'select(.title) | "hacker news\t\(.title)\t\(.url // "https://news.ycombinator.com/item?id=\(.id)")"'
 }
 
 fact_news() {
@@ -108,10 +118,17 @@ fact_news() {
   local name=${pick%%:*} url=${pick#*:} f
   f="$CACHE/news-$name.xml"
   fetch "$url" "$f" 30 || return 1
-  # Item titles only (skip the channel title), top 8 = the lead stories
-  tr -d '\n' <"$f" | grep -oE '<item[ >].*' | grep -oE '<title>[^<]*(<!\[CDATA\[[^]]*\]\]>)?' |
-    sed -E 's/<title>(<!\[CDATA\[)?//; s/\]\]>$//; s/&quot;/"/g; s/&#39;|&apos;/'"'"'/g; s/&amp;/\&/g' |
-    grep -v '^[[:space:]]*$' | head -8 | pick | awk -v n="$name" '{ print "mundo · " n "\t" $0 }'
+  # One item per line, then its <title> and <link>; top 8 items = the lead stories
+  tr -d '\n' <"$f" | awk '{ gsub(/<item[ >]/, "\n&"); print }' | tail -n +2 | head -8 |
+    awk -v n="$name" '
+      function tag(s, t,   v) {
+        if (!match(s, "<" t ">[^<]*(<!\\[CDATA\\[[^]]*)?")) return ""
+        v = substr(s, RSTART + length(t) + 2, RLENGTH - length(t) - 2); sub(/^<!\[CDATA\[/, "", v)
+        gsub(/&quot;/, "\"", v); gsub(/&#39;|&apos;/, "'"'"'", v); gsub(/&amp;/, "\\&", v)
+        return v
+      }
+      { title = tag($0, "title"); if (title ~ /[^[:space:]]/) print "mundo · " n "\t" title "\t" tag($0, "link") }' |
+    pick
 }
 
 # Weighted pick: news 30%, history 25%, tip 20%, trending 15%, hn 10%; fall back through the rest
@@ -126,10 +143,11 @@ fi
 for source in "${order[@]}"; do
   line=$("fact_$source" 2>>"$LOG") || continue
   [ -n "$line" ] || continue
-  tag=${line%%$'\t'*}
-  text=$(printf '%s' "${line#*$'\t'}" | strip_controls | shorten)
+  IFS=$'\t' read -r tag text url <<<"$line"
   tag=$(printf '%s' "$tag" | strip_controls)
-  printf '%s\t%s\n' "$tag" "$text" >"$CACHE/fact.tmp" && mv "$CACHE/fact.tmp" "$CACHE/fact"
+  text=$(printf '%s' "$text" | strip_controls | shorten)
+  url=$(printf '%s\n' "$url" | strip_controls | encode_url)
+  printf '%s\t%s\t%s\n' "$tag" "$text" "$url" >"$CACHE/fact.tmp" && mv "$CACHE/fact.tmp" "$CACHE/fact"
   exit 0
 done
 

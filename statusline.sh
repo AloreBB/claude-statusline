@@ -3,7 +3,8 @@
 # Line 1: window lights · alore. · cwd · git branch · worktree
 # Line 2: model + effort meter · context gauge + used/size · total tokens
 # Line 3: 5h limit reset timer · session usage gauge  (only when rate_limits present)
-# Line 4: news / history / command tip / trending fact, refreshed per prompt by statusline-fact.sh
+# Line 4: news / history / command tip / trending fact, refreshed per prompt by statusline-fact.sh;
+#         cmd/ctrl+click opens the full article
 # Shapes are plain Unicode (▰▱●✦◷), not powerline glyphs, so any font renders them.
 
 input=$(cat)
@@ -148,7 +149,7 @@ fact_file="$HOME/.cache/claude-statusline/fact"
 # Fact text comes from external feeds: strip C0/C1 control chars (keeping the tab separator)
 # so it cannot inject terminal escapes
 # (C1 is replaced, not deleted, so removal can never splice bytes into a new sequence)
-IFS=$'\t' read -r tag text < <(LC_ALL=C tr -d '\000-\010\013-\037\177' <"$fact_file" | LC_ALL=C sed $'s/\xc2[\x80-\x9f]/?/g')
+IFS=$'\t' read -r tag text url < <(LC_ALL=C tr -d '\000-\010\013-\037\177' <"$fact_file" | LC_ALL=C sed $'s/\xc2[\x80-\x9f]/?/g')
 case $tag in
   mundo*)       icon="◉"; color=$RED ;;
   hoy\ en*)     icon="◆"; color=$AMBER ;;
@@ -157,4 +158,8 @@ case $tag in
   hacker\ news) icon="▲"; color=$HN_ORANGE ;;
   *)            icon="✧"; color=$SLATE ;;
 esac
-printf '%s %s\n' "$(bold "$color" "$icon $tag")" "$(paint "$TEXT" "$text")"
+fact="$(bold "$color" "$icon $tag") $(paint "$TEXT" "$text")"
+# cmd/ctrl+click opens the full article; the URL is only trusted if it is plain https
+safe_url='^https://[A-Za-z0-9._~:/?#@!$&()*+,;=%-]+$'
+[[ ${url:-} =~ $safe_url ]] && fact=$(link "$url" "$fact")
+printf '%s\n' "$fact"
