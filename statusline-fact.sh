@@ -9,6 +9,7 @@
 #   tip      — tldr-pages ES examples for commands installed here (refreshed weekly)
 #   hn       — Hacker News top stories         (refreshed hourly)
 #   news     — BBC Mundo / DW / France 24 top headlines (refreshed every 30 min)
+#   issue    — open GitHub issues assigned to you, via gh (refreshed every 30 min; skipped without gh)
 
 set -o pipefail
 CACHE="$HOME/.cache/claude-statusline"
@@ -131,13 +132,29 @@ fact_news() {
     pick
 }
 
-# Weighted pick: news 30%, history 25%, tip 20%, trending 15%, hn 10%; fall back through the rest
+fact_issue() {
+  local f="$CACHE/issues.json"
+  command -v gh >/dev/null 2>&1 || return 1
+  if [ ! -s "$f" ] || [ -n "$(find "$f" -mmin +30 2>/dev/null)" ]; then
+    if gh search issues --assignee=@me --state=open --limit 30 \
+         --json number,title,url,repository >"$f.tmp" 2>>"$LOG"; then
+      mv "$f.tmp" "$f"
+    else
+      rm -f "$f.tmp"; log "gh search issues failed"
+    fi
+  fi
+  [ -s "$f" ] || return 1
+  jq -r '.[] | "issue · \(.repository.name)#\(.number)\t\(.title)\t\(.url)"' "$f" | pick
+}
+
+# Weighted pick: news 25%, issue 20%, history 20%, tip 15%, trending 12%, hn 8%; fall back through the rest
 roll=$((RANDOM % 100))
-if   ((roll < 30)); then order=(news history tip trending hn)
-elif ((roll < 55)); then order=(history news tip trending hn)
-elif ((roll < 75)); then order=(tip news history trending hn)
-elif ((roll < 90)); then order=(trending news history tip hn)
-else                     order=(hn news history tip trending)
+if   ((roll < 25)); then order=(news history tip trending hn issue)
+elif ((roll < 45)); then order=(issue news history tip trending hn)
+elif ((roll < 65)); then order=(history news tip trending hn issue)
+elif ((roll < 80)); then order=(tip news history trending hn issue)
+elif ((roll < 92)); then order=(trending news history tip hn issue)
+else                     order=(hn news history tip trending issue)
 fi
 
 for source in "${order[@]}"; do
