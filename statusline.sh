@@ -75,6 +75,10 @@ git_safe() { git -C "$cwd" -c core.fsmonitor=false --no-optional-locks "$@"; }
 
 if branch=$(git_safe rev-parse --abbrev-ref HEAD 2>/dev/null); then
   line1+="$SEP$(paint "$SIGNAL" "⎇ $branch")"
+  # Diffing the worktree runs clean filters from the repo config; skip the counts when the
+  # local config defines filters, diff drivers or includes (could point anywhere)
+  changes=""
+  git_safe config --local --get-regexp '^(filter|diff|include|includeif)\.' >/dev/null 2>&1 ||
   changes=$(git_safe diff --no-ext-diff --no-textconv HEAD --shortstat 2>/dev/null |
     awk '{ for (i = 1; i <= NF; i++) { if ($(i+1) ~ /^insertion/) a = $i; if ($(i+1) ~ /^deletion/) d = $i } }
          END { if (a || d) printf "%d %d", a, d }')
@@ -127,8 +131,9 @@ fi
 # --- Line 4: fact of the moment (written by statusline-fact.sh on each prompt) ---
 fact_file="$HOME/.cache/claude-statusline/fact"
 [ -s "$fact_file" ] || exit 0
-# Fact text comes from external feeds: strip control chars so it cannot inject terminal escapes
-IFS=$'\t' read -r tag text < <(tr -d '\000-\010\013-\037\177' <"$fact_file")
+# Fact text comes from external feeds: strip C0/C1 control chars (keeping the tab separator)
+# so it cannot inject terminal escapes
+IFS=$'\t' read -r tag text < <(LC_ALL=C tr -d '\000-\010\013-\037\177' <"$fact_file" | LC_ALL=C sed $'s/\xc2[\x80-\x9f]//g')
 case $tag in
   mundo*)       icon="◉"; color=$RED ;;
   hoy\ en*)     icon="◆"; color=$YELLOW ;;

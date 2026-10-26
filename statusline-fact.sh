@@ -38,6 +38,10 @@ fetch() {
   fi
 }
 
+# Feed text is untrusted: drop C0 and C1 control chars (UTF-8 U+0080–U+009F) so it cannot
+# carry terminal escape sequences
+strip_controls() { LC_ALL=C tr -d '\000-\037\177' | LC_ALL=C sed $'s/\xc2[\x80-\x9f]//g'; }
+
 # Trim to MAX_LEN at a word boundary
 shorten() {
   awk -v max="$MAX_LEN" '{
@@ -122,8 +126,8 @@ for source in "${order[@]}"; do
   line=$("fact_$source" 2>>"$LOG") || continue
   [ -n "$line" ] || continue
   tag=${line%%$'\t'*}
-  text=$(printf '%s' "${line#*$'\t'}" | shorten)
-  tag=$(printf '%s' "$tag" | tr -d '\000-\037\177')
+  text=$(printf '%s' "${line#*$'\t'}" | strip_controls | shorten)
+  tag=$(printf '%s' "$tag" | strip_controls)
   printf '%s\t%s\n' "$tag" "$text" >"$CACHE/fact.tmp" && mv "$CACHE/fact.tmp" "$CACHE/fact"
   exit 0
 done
