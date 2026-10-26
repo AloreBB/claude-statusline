@@ -11,16 +11,17 @@ j() { jq -r "$1 // empty" <<<"$input"; }
 
 # alore.dev palette (truecolor "r;g;b")
 SLATE="139;155;176"     # #8b9bb0
-PAPER="244;246;248"     # #f4f6f8
+TEXT=""                 # terminal default fg: readable on light and dark themes
 GRAPHITE="74;85;99"     # #4a5563
 SIGNAL="43;212;138"     # #2bd48a
 RED="255;95;87"         # #ff5f57
 YELLOW="254;188;46"     # #febc2e
 GREEN="40;200;64"       # #28c840
 HN_ORANGE="255;102;0"   # #ff6600
+AMBER="214;158;30"      # #d69e1e, yellow that still reads on light backgrounds
 GAUGE_WIDTH=12
 
-fg() { printf '\033[38;2;%sm' "$1"; }
+fg() { if [ -n "$1" ]; then printf '\033[38;2;%sm' "$1"; else printf '\033[39m'; fi; }
 RESET=$'\033[0m'
 
 SEP=" $(fg "$GRAPHITE")/$RESET "
@@ -68,7 +69,7 @@ effort_meter() {
 
 # --- Line 1: location ---------------------------------------------------------
 cwd=$(j '.workspace.current_dir // .cwd')
-line1="$(paint "$RED" ●)$(paint "$YELLOW" ●)$(paint "$GREEN" ●)  $(bold "$PAPER" alore)$(bold "$SIGNAL" .)  $(paint "$SLATE" "${cwd/#$HOME/\~}")"
+line1="$(paint "$RED" ●)$(paint "$YELLOW" ●)$(paint "$GREEN" ●)  $(bold "$TEXT" alore)$(bold "$SIGNAL" .)  $(paint "$SLATE" "${cwd/#$HOME/\~}")"
 
 # cwd may be an untrusted checkout. Only read the branch name: rev-parse reads refs and never
 # runs filters or hooks (fsmonitor disabled too). Change counts are deliberately not shown,
@@ -92,13 +93,13 @@ used_pct=$(j '.context_window.used_percentage')
 if [ -n "$size" ] && [ -n "$used_pct" ]; then
   used=$(awk -v p="$used_pct" -v s="$size" 'BEGIN { printf "%d", p * s / 100 }')
   pct_label=$(awk -v p="$used_pct" 'BEGIN { printf "%.0f", p }')
-  line2+="$SEP$(gauge "$used_pct") $(paint "$PAPER" "$(fmt_tokens "$used" 0)")$(paint "$SLATE" "/$(fmt_tokens "$size" 1)  ${pct_label}%")"
+  line2+="$SEP$(gauge "$used_pct") $(paint "$TEXT" "$(fmt_tokens "$used" 0)")$(paint "$SLATE" "/$(fmt_tokens "$size" 1)  ${pct_label}%")"
 fi
 
 total_in=$(j '.context_window.total_input_tokens')
 total_out=$(j '.context_window.total_output_tokens')
 if [ -n "$total_in" ] && [ -n "$total_out" ]; then
-  line2+="$SEP$(paint "$SLATE" Σ) $(paint "$PAPER" "$(fmt_tokens $((total_in + total_out)) 1)")"
+  line2+="$SEP$(paint "$SLATE" Σ) $(paint "$TEXT" "$(fmt_tokens $((total_in + total_out)) 1)")"
 fi
 
 printf '%s\n%s\n' "$line1" "$line2"
@@ -113,8 +114,8 @@ if [ -n "$session_pct" ]; then
     (( left < 0 )) && left=0
     reset_label="$((left / 3600))h $((left % 3600 / 60))m"
   fi
-  printf '%s %s%s%s %s %s\n' "$(paint "$SLATE" "◷ reset")" "$(paint "$PAPER" "$reset_label")" "$SEP" \
-    "$(paint "$SLATE" 5h)" "$(gauge "$session_pct")" "$(paint "$PAPER" "$(awk -v p="$session_pct" 'BEGIN { printf "%.1f%%", p }')")"
+  printf '%s %s%s%s %s %s\n' "$(paint "$SLATE" "◷ reset")" "$(paint "$TEXT" "$reset_label")" "$SEP" \
+    "$(paint "$SLATE" 5h)" "$(gauge "$session_pct")" "$(paint "$TEXT" "$(awk -v p="$session_pct" 'BEGIN { printf "%.1f%%", p }')")"
 fi
 
 # --- Line 4: fact of the moment (written by statusline-fact.sh on each prompt) ---
@@ -126,10 +127,10 @@ fact_file="$HOME/.cache/claude-statusline/fact"
 IFS=$'\t' read -r tag text < <(LC_ALL=C tr -d '\000-\010\013-\037\177' <"$fact_file" | LC_ALL=C sed $'s/\xc2[\x80-\x9f]/?/g')
 case $tag in
   mundo*)       icon="◉"; color=$RED ;;
-  hoy\ en*)     icon="◆"; color=$YELLOW ;;
+  hoy\ en*)     icon="◆"; color=$AMBER ;;
   tip*)         icon="❯"; color=$SIGNAL ;;
   tendencia*)   icon="↗"; color=$SLATE ;;
   hacker\ news) icon="▲"; color=$HN_ORANGE ;;
   *)            icon="✧"; color=$SLATE ;;
 esac
-printf '%s %s\n' "$(bold "$color" "$icon $tag")" "$(paint "$PAPER" "$text")"
+printf '%s %s\n' "$(bold "$color" "$icon $tag")" "$(paint "$TEXT" "$text")"

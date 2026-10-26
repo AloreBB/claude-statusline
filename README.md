@@ -71,4 +71,4 @@ Si te pasaron la URL de este repo para instalarlo:
 
 - Los iconos son Unicode estándar (`● ▰ ▱ ✦ ◷ ◆ ◉ ▲ ❯`), no glifos powerline, así que no hace falta Nerd Font.
 - Usa color truecolor (24 bits). Terminales sin truecolor muestran colores aproximados.
-- La paleta está al inicio de `statusline.sh` (`SIGNAL`, `SLATE`, `PAPER`…), por si quieres cambiarla.
+- La paleta está al inicio de `statusline.sh` (`SIGNAL`, `SLATE`, `AMBER`…), por si quieres cambiarla. El texto principal usa el color por defecto de la terminal, así que se lee en temas claros y oscuros.
