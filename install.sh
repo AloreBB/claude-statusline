@@ -4,12 +4,14 @@
 #   - points settings.json "statusLine" at it
 #   - adds a UserPromptSubmit hook that refreshes the fact line on every prompt
 # Safe to re-run: it updates the scripts and never duplicates the hook.
+# Works from a clone or piped from curl (then it downloads the scripts from $REPO_RAW):
+#   curl -fsSL https://raw.githubusercontent.com/AloreBB/claude-statusline/main/install.sh | bash
 set -euo pipefail
 
 CLAUDE_DIR="$HOME/.claude"
 SETTINGS="$CLAUDE_DIR/settings.json"
 CACHE="$HOME/.cache/claude-statusline"
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_RAW="${REPO_RAW:-https://raw.githubusercontent.com/AloreBB/claude-statusline/main}"
 HOOK_CMD='bash ~/.claude/statusline-fact.sh >/dev/null 2>&1 &'
 
 say() { printf '\033[38;2;43;212;138m●\033[0m %s\n' "$*"; }
@@ -44,8 +46,18 @@ if [ "${1:-}" = "--uninstall" ]; then
   exit 0
 fi
 
-install -m 755 "$SRC/statusline.sh" "$CLAUDE_DIR/statusline.sh"
-install -m 755 "$SRC/statusline-fact.sh" "$CLAUDE_DIR/statusline-fact.sh"
+# From a clone use the scripts next to this file; piped from curl there is no file, so download them
+src=""
+[ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ] && src="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -z "$src" ] || [ ! -f "$src/statusline.sh" ]; then
+  src=$(mktemp -d)
+  trap 'rm -f "$tmp"; rm -rf "$src"' EXIT
+  for f in statusline.sh statusline-fact.sh; do
+    curl -fsSL -m 20 "$REPO_RAW/$f" -o "$src/$f" || die "No se pudo descargar $f de $REPO_RAW"
+  done
+fi
+install -m 755 "$src/statusline.sh" "$CLAUDE_DIR/statusline.sh"
+install -m 755 "$src/statusline-fact.sh" "$CLAUDE_DIR/statusline-fact.sh"
 
 jq --arg cmd "$HOOK_CMD" '
   .statusLine = {type: "command", command: "bash ~/.claude/statusline.sh", padding: 0, refreshInterval: 30}

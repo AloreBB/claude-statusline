@@ -34,9 +34,10 @@ Las respuestas se guardan en `~/.cache/claude-statusline/`, así que casi todos 
 Requisitos: `bash`, `jq`, `curl`, `awk`, `unzip`, `git`. Funciona en Linux y macOS.
 
 ```bash
-git clone https://github.com/AloreBB/claude-statusline.git /tmp/claude-statusline
-bash /tmp/claude-statusline/install.sh
+curl -fsSL https://raw.githubusercontent.com/AloreBB/claude-statusline/main/install.sh | bash
 ```
+
+No hace falta clonar: el instalador descarga los scripts. También funciona desde un clon (`bash install.sh`).
 
 El instalador:
 
@@ -51,7 +52,7 @@ Se puede correr de nuevo para actualizar; no duplica el hook.
 ### Desinstalar
 
 ```bash
-bash /tmp/claude-statusline/install.sh --uninstall
+curl -fsSL https://raw.githubusercontent.com/AloreBB/claude-statusline/main/install.sh | bash -s -- --uninstall
 ```
 
 Quita `statusLine`, el hook, los scripts y la caché. Deja backup del settings.
@@ -60,13 +61,12 @@ Quita `statusLine`, el hook, los scripts y la caché. Deja backup del settings.
 
 Si te pasaron la URL de este repo para instalarlo:
 
-1. Clona con `git clone https://github.com/AloreBB/claude-statusline.git /tmp/claude-statusline`. Si ya existe, haz `git -C /tmp/claude-statusline pull`.
-2. Si falta alguna dependencia (`jq`, `curl`, `unzip`), dile al usuario cuál y cómo instalarla; no la instales sin preguntar.
-3. Corre `bash /tmp/claude-statusline/install.sh` y muestra su salida.
-4. Si el settings tenía otro `statusLine` (por ejemplo `npx ccstatusline`), avisa que fue reemplazado. Si era ccstatusline, ofrece borrar `~/.config/ccstatusline` y desinstalarlo (`npm uninstall -g ccstatusline`).
-5. Comprueba: `echo '{"workspace":{"current_dir":"'"$HOME"'"},"model":{"display_name":"Opus"}}' | bash ~/.claude/statusline.sh` debe imprimir varias líneas sin errores.
-6. Si corre dentro de tmux (`$TMUX` definido), revisa `tmux display -p '#{client_termfeatures}'`: si no incluye `hyperlinks`, ofrece agregar `set -as terminal-features ',*:hyperlinks'` a `~/.tmux.conf` (sin eso tmux descarta los enlaces). Aplica con `tmux set -as terminal-features ',*:hyperlinks'` y avisa que hay que desconectarse y volver a hacer attach.
-7. Dile al usuario que se ve en el próximo refresh o al reiniciar Claude Code.
+1. Si falta alguna dependencia (`jq`, `curl`, `unzip`), dile al usuario cuál y cómo instalarla; no la instales sin preguntar.
+2. Corre `curl -fsSL https://raw.githubusercontent.com/AloreBB/claude-statusline/main/install.sh | bash` y muestra su salida.
+3. Si el settings tenía otro `statusLine` (por ejemplo `npx ccstatusline`), avisa que fue reemplazado. Si era ccstatusline, ofrece borrar `~/.config/ccstatusline` y desinstalarlo (`npm uninstall -g ccstatusline`).
+4. Comprueba: `echo '{"workspace":{"current_dir":"'"$HOME"'"},"model":{"display_name":"Opus"}}' | bash ~/.claude/statusline.sh` debe imprimir varias líneas sin errores.
+5. Si corre dentro de tmux (`$TMUX` definido), revisa `tmux display -p '#{client_termfeatures}'`: si no incluye `hyperlinks`, ofrece agregar `set -as terminal-features ',*:hyperlinks'` a `~/.tmux.conf` (sin eso tmux descarta los enlaces). Aplica con `tmux set -as terminal-features ',*:hyperlinks'` y avisa que hay que desconectarse y volver a hacer attach.
+6. Dile al usuario que se ve en el próximo refresh o al reiniciar Claude Code.
 
 ## Notas
 
