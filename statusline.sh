@@ -70,9 +70,12 @@ effort_meter() {
 cwd=$(j '.workspace.current_dir // .cwd')
 line1="$(paint "$RED" ●)$(paint "$YELLOW" ●)$(paint "$GREEN" ●)  $(bold "$PAPER" alore)$(bold "$SIGNAL" .)  $(paint "$SLATE" "${cwd/#$HOME/\~}")"
 
-if branch=$(git -C "$cwd" --no-optional-locks rev-parse --abbrev-ref HEAD 2>/dev/null); then
+# cwd may be an untrusted checkout: never let its .git/config run programs (fsmonitor, diff drivers)
+git_safe() { git -C "$cwd" -c core.fsmonitor=false --no-optional-locks "$@"; }
+
+if branch=$(git_safe rev-parse --abbrev-ref HEAD 2>/dev/null); then
   line1+="$SEP$(paint "$SIGNAL" "⎇ $branch")"
-  changes=$(git -C "$cwd" --no-optional-locks diff HEAD --shortstat 2>/dev/null |
+  changes=$(git_safe diff --no-ext-diff --no-textconv HEAD --shortstat 2>/dev/null |
     awk '{ for (i = 1; i <= NF; i++) { if ($(i+1) ~ /^insertion/) a = $i; if ($(i+1) ~ /^deletion/) d = $i } }
          END { if (a || d) printf "%d %d", a, d }')
   if [ -n "$changes" ]; then
@@ -124,7 +127,8 @@ fi
 # --- Line 4: fact of the moment (written by statusline-fact.sh on each prompt) ---
 fact_file="$HOME/.cache/claude-statusline/fact"
 [ -s "$fact_file" ] || exit 0
-IFS=$'\t' read -r tag text <"$fact_file"
+# Fact text comes from external feeds: strip control chars so it cannot inject terminal escapes
+IFS=$'\t' read -r tag text < <(tr -d '\000-\010\013-\037\177' <"$fact_file")
 case $tag in
   mundo*)       icon="◉"; color=$RED ;;
   hoy\ en*)     icon="◆"; color=$YELLOW ;;

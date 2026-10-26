@@ -41,7 +41,7 @@ fetch() {
 # Trim to MAX_LEN at a word boundary
 shorten() {
   awk -v max="$MAX_LEN" '{
-    gsub(/[ \t]+/, " "); gsub(/ \([^)]*\)/, "")
+    gsub(/[\001-\037\177]/, ""); gsub(/[ ]+/, " "); gsub(/ \([^)]*\)/, "")
     if (length($0) <= max) { print; exit }
     s = substr($0, 1, max); sub(/ [^ ]*$/, "", s); print s "…"; exit
   }'
@@ -123,6 +123,7 @@ for source in "${order[@]}"; do
   [ -n "$line" ] || continue
   tag=${line%%$'\t'*}
   text=$(printf '%s' "${line#*$'\t'}" | shorten)
+  tag=$(printf '%s' "$tag" | tr -d '\000-\037\177')
   printf '%s\t%s\n' "$tag" "$text" >"$CACHE/fact.tmp" && mv "$CACHE/fact.tmp" "$CACHE/fact"
   exit 0
 done
