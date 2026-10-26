@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Claude Code status line — shapes and color from the alore.dev palette (replaces ccstatusline).
 # Line 1: window lights · alore. · cwd · git branch · worktree
-# Line 2: model + effort meter · context gauge + used/size · total tokens
+# Line 2: model + effort meter · context gauge + used/size (+ compact warning) · total tokens · lines changed
 # Line 3: 5h limit reset timer · session usage gauge  (only when rate_limits present)
 # Line 4: news / history / command tip / trending fact, refreshed per prompt by statusline-fact.sh;
 #         cmd/ctrl+click opens the full article
@@ -21,6 +21,7 @@ GREEN="40;200;64"       # #28c840
 HN_ORANGE="255;102;0"   # #ff6600
 AMBER="214;158;30"      # #d69e1e, yellow that still reads on light backgrounds
 GAUGE_WIDTH=12
+COMPACT_WARN_PCT=80     # context % at which the "compacta pronto" warning shows
 
 fg() { if [ -n "$1" ]; then printf '\033[38;2;%sm' "$1"; else printf '\033[39m'; fi; }
 RESET=$'\033[0m'
@@ -119,12 +120,19 @@ if [ -n "$size" ] && [ -n "$used_pct" ]; then
   used=$(awk -v p="$used_pct" -v s="$size" 'BEGIN { printf "%d", p * s / 100 }')
   pct_label=$(awk -v p="$used_pct" 'BEGIN { printf "%.0f", p }')
   line2+="$SEP$(gauge "$used_pct") $(paint "$TEXT" "$(fmt_tokens "$used" 0)")$(paint "$SLATE" "/$(fmt_tokens "$size" 1)  ${pct_label}%")"
+  ((pct_label >= COMPACT_WARN_PCT)) && line2+="  $(bold "$RED" "⚠ compacta pronto")"
 fi
 
 total_in=$(j '.context_window.total_input_tokens')
 total_out=$(j '.context_window.total_output_tokens')
 if [ -n "$total_in" ] && [ -n "$total_out" ]; then
   line2+="$SEP$(paint "$SLATE" Σ) $(paint "$TEXT" "$(fmt_tokens $((total_in + total_out)) 1)")"
+fi
+
+added=$(j '.cost.total_lines_added')
+removed=$(j '.cost.total_lines_removed')
+if ((${added:-0} + ${removed:-0} > 0)); then
+  line2+="$SEP$(paint "$GREEN" "+${added:-0}") $(paint "$RED" "−${removed:-0}")"
 fi
 
 printf '%s\n%s\n' "$line1" "$line2"
