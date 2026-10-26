@@ -6,6 +6,8 @@
 # Line 4: news / history / command tip / trending fact, refreshed per prompt by statusline-fact.sh;
 #         cmd/ctrl+click opens the full article
 # Shapes are plain Unicode (▰▱●✦◷), not powerline glyphs, so any font renders them.
+# Line 1 ends with a greeting for the hour; a mascot line before the fact reacts to the session
+# (rate limit, compaction, PR review, context, diff size, cold cache, fast mode, late night, vim).
 
 input=$(cat)
 j() { jq -r "$1 // empty" <<<"$input"; }
@@ -90,6 +92,67 @@ effort_meter() {
   printf '%s %s' "$1" "$dots"
 }
 
+# Mascot face + a joke for the most pressing session state. Jokes rotate every 30 s (the
+# refreshInterval) and the idle face blinks on alternate ticks.
+mascot() {
+  local now tick color face texts=()
+  now=$(date +%s); tick=$((now / 30))
+  local rate ctx usage tokens review added removed expires fast vim hour
+  rate=$(j '.rate_limits.five_hour.used_percentage'); rate=${rate%.*}
+  ctx=$(j '.context_window.used_percentage'); ctx=${ctx%.*}
+  usage=$(jq -r '.context_window.current_usage | type' <<<"$input")
+  tokens=$(j '.context_window.total_input_tokens')
+  review=$(j '.pr.review_state')
+  added=$(j '.cost.total_lines_added'); removed=$(j '.cost.total_lines_removed')
+  expires=$(j '.prompt_cache.expires_at')
+  fast=$(j '.fast_mode')
+  vim=$(j '.vim.mode')
+  hour=$((10#$(date +%H)))
+
+  if ((${rate:-0} >= 90)); then
+    face="(ﾟДﾟ;)"; color=$RED
+    texts=("¡se acaba la gasolina!" "racionando tokens como en guerra" "modo ahorro: ON")
+  elif [ "$usage" = null ] && ((${tokens:-0} > 0)); then
+    face="(⊙_⊙)?"; color=$AMBER
+    texts=("¿de qué hablábamos?" "memoria de pez activada" "acabo de despertar de un /compact")
+  elif [ "$review" = changes_requested ]; then
+    face="(._.)"; color=$RED
+    texts=("piden cambios… respira hondo" "el reviewer no perdona" "nada que un commit no arregle")
+  elif [ "$review" = approved ]; then
+    face="\\(^o^)/"; color=$SIGNAL
+    texts=("¡PR aprobado, a mergear!" "luz verde, capitán" "el reviewer te ama")
+  elif ((${ctx:-0} >= 80)); then
+    face="(×_×)"; color=$RED
+    texts=("ya no me cabe nada" "cabeza llena, corazón contento" "necesito un /compact y un café")
+  elif ((${added:-0} + ${removed:-0} > 500)); then
+    face="(°_°;)"; color=$AMBER
+    texts=("eso es mucho diff…" "el reviewer va a llorar" "¿y si lo partimos en PRs?")
+  elif [ -n "$expires" ] && ((expires < now)); then
+    face="(-_-) zzz"; color=$SLATE
+    texts=("el caché se durmió" "el próximo mensaje sale más caro" "despiértame con un prompt")
+  elif [ "$fast" = true ]; then
+    face="ε=ε=(ノ≧∇≦)ノ"; color=$SIGNAL
+    texts=("¡modo turbo!" "a toda máquina" "agárrate que hay curvas")
+  elif ((hour < 5)); then
+    face="(￣o￣) zzZ"; color=$SLATE
+    texts=("¿no deberías dormir?" "el código de las 3am nunca falla… ¿verdad?" "mañana nadie entiende esto")
+  elif [ "$vim" = INSERT ]; then
+    face="(•̀ᴗ•́)✎"; color=$SIGNAL
+    texts=("escribiendo como poeta" "i de inspiración")
+  elif [ -n "$vim" ]; then
+    face="(•_•)"; color=$SLATE
+    texts=("modo vim: modo zen" ":wq y a casa")
+  elif ((${ctx:-0} >= 50)); then
+    face="(°_°)"; color=$AMBER
+    texts=("se va llenando la cabeza" "medio tanque, medio camino" "aún aguanto, creo")
+  else
+    face="(•‿•)"; color=$SIGNAL
+    ((tick % 2)) && face="(-‿-)"
+    texts=("todo fluye" "listo para codear" "cero bugs (por ahora)" "hoy sale a la primera")
+  fi
+  printf '%s %s' "$(bold "$color" "$face")" "$(paint "$SLATE" "${texts[tick % ${#texts[@]}]}")"
+}
+
 # --- Line 1: location ---------------------------------------------------------
 cwd=$(j '.workspace.current_dir // .cwd')
 line1="$(paint "$RED" ●)$(paint "$YELLOW" ●)$(paint "$GREEN" ●)  $(bold "$TEXT" alore)$(bold "$SIGNAL" .)  $(paint "$SLATE" "${cwd/#$HOME/\~}")"
@@ -105,6 +168,14 @@ fi
 
 worktree=$(j '.worktree.name')
 [ -n "$worktree" ] && line1+="$SEP$(paint "$YELLOW" "◇ $worktree")"
+
+hour=$((10#$(date +%H)))
+if   ((hour < 5));  then greeting=$(paint "$SLATE" "✶ trasnochando")
+elif ((hour < 12)); then greeting=$(paint "$AMBER" "☀ buenos días")
+elif ((hour < 19)); then greeting=$(paint "$AMBER" "◐ buenas tardes")
+else                     greeting=$(paint "$SLATE" "☾ buenas noches")
+fi
+line1+="$SEP$greeting"
 
 # --- Line 2: model + context --------------------------------------------------
 model=$(j '.model.display_name')
@@ -142,6 +213,9 @@ if [ -n "$session_pct" ]; then
   printf '%s %s%s%s %s %s\n' "$(paint "$SLATE" "◷ reset")" "$(paint "$TEXT" "$reset_label")" "$SEP" \
     "$(paint "$SLATE" 5h)" "$(gauge "$session_pct")" "$(paint "$TEXT" "$(awk -v p="$session_pct" 'BEGIN { printf "%.1f%%", p }')")"
 fi
+
+# --- Mascot ------------------------------------------------------------------
+printf '%s\n' "$(mascot)"
 
 # --- Line 4: fact of the moment (written by statusline-fact.sh on each prompt) ---
 fact_file="$HOME/.cache/claude-statusline/fact"
