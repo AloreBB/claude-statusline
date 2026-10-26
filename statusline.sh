@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Claude Code status line — shapes and color from the alore.dev palette (replaces ccstatusline).
-# Line 1: window lights · alore. · cwd · git branch · git changes · worktree
+# Line 1: window lights · alore. · cwd · git branch · worktree
 # Line 2: model + effort meter · context gauge + used/size · total tokens
 # Line 3: 5h limit reset timer · session usage gauge  (only when rate_limits present)
 # Line 4: news / history / command tip / trending fact, refreshed per prompt by statusline-fact.sh
@@ -70,22 +70,11 @@ effort_meter() {
 cwd=$(j '.workspace.current_dir // .cwd')
 line1="$(paint "$RED" ●)$(paint "$YELLOW" ●)$(paint "$GREEN" ●)  $(bold "$PAPER" alore)$(bold "$SIGNAL" .)  $(paint "$SLATE" "${cwd/#$HOME/\~}")"
 
-# cwd may be an untrusted checkout: never let its .git/config run programs (fsmonitor, diff drivers)
-git_safe() { git -C "$cwd" -c core.fsmonitor=false --no-optional-locks "$@"; }
-
-if branch=$(git_safe rev-parse --abbrev-ref HEAD 2>/dev/null); then
+# cwd may be an untrusted checkout. Only read the branch name: rev-parse reads refs and never
+# runs filters or hooks (fsmonitor disabled too). Change counts are deliberately not shown,
+# since diffing the worktree runs clean filters defined by the repo's own config.
+if branch=$(git -C "$cwd" -c core.fsmonitor=false --no-optional-locks rev-parse --abbrev-ref HEAD 2>/dev/null); then
   line1+="$SEP$(paint "$SIGNAL" "⎇ $branch")"
-  # Diffing the worktree runs clean filters from the repo config; skip the counts when the
-  # local config defines filters, diff drivers or includes (could point anywhere)
-  changes=""
-  git_safe config --local --get-regexp '^(filter|diff|include|includeif)\.' >/dev/null 2>&1 ||
-  changes=$(git_safe diff --no-ext-diff --no-textconv HEAD --shortstat 2>/dev/null |
-    awk '{ for (i = 1; i <= NF; i++) { if ($(i+1) ~ /^insertion/) a = $i; if ($(i+1) ~ /^deletion/) d = $i } }
-         END { if (a || d) printf "%d %d", a, d }')
-  if [ -n "$changes" ]; then
-    read -r added deleted <<<"$changes"
-    line1+=" $(paint "$SIGNAL" "+$added") $(paint "$RED" "-$deleted")"
-  fi
 fi
 
 worktree=$(j '.worktree.name')
@@ -133,7 +122,8 @@ fact_file="$HOME/.cache/claude-statusline/fact"
 [ -s "$fact_file" ] || exit 0
 # Fact text comes from external feeds: strip C0/C1 control chars (keeping the tab separator)
 # so it cannot inject terminal escapes
-IFS=$'\t' read -r tag text < <(LC_ALL=C tr -d '\000-\010\013-\037\177' <"$fact_file" | LC_ALL=C sed $'s/\xc2[\x80-\x9f]//g')
+# (C1 is replaced, not deleted, so removal can never splice bytes into a new sequence)
+IFS=$'\t' read -r tag text < <(LC_ALL=C tr -d '\000-\010\013-\037\177' <"$fact_file" | LC_ALL=C sed $'s/\xc2[\x80-\x9f]/?/g')
 case $tag in
   mundo*)       icon="◉"; color=$RED ;;
   hoy\ en*)     icon="◆"; color=$YELLOW ;;

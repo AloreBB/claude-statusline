@@ -38,9 +38,10 @@ fetch() {
   fi
 }
 
-# Feed text is untrusted: drop C0 and C1 control chars (UTF-8 U+0080–U+009F) so it cannot
-# carry terminal escape sequences
-strip_controls() { LC_ALL=C tr -d '\000-\037\177' | LC_ALL=C sed $'s/\xc2[\x80-\x9f]//g'; }
+# Feed text is untrusted: drop C0 control chars and neutralize C1 (UTF-8 U+0080–U+009F) so it
+# cannot carry terminal escapes. C1 is replaced rather than deleted: deleting could splice the
+# surrounding bytes into a new sequence (\xc2\xc2\x9b\x9b -> \xc2\x9b).
+strip_controls() { LC_ALL=C tr -d '\000-\037\177' | LC_ALL=C sed $'s/\xc2[\x80-\x9f]/?/g'; }
 
 # Trim to MAX_LEN at a word boundary
 shorten() {
