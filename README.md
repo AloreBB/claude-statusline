@@ -34,7 +34,7 @@ Las respuestas se guardan en `~/.cache/claude-statusline/`, así que casi todos 
 Requisitos: `bash`, `jq`, `curl`, `awk`, `unzip`, `git`. Funciona en Linux y macOS.
 
 ```bash
-gh repo clone AloreBB/claude-statusline /tmp/claude-statusline
+git clone https://github.com/AloreBB/claude-statusline.git /tmp/claude-statusline
 bash /tmp/claude-statusline/install.sh
 ```
 
@@ -60,7 +60,7 @@ Quita `statusLine`, el hook, los scripts y la caché. Deja backup del settings.
 
 Si te pasaron la URL de este repo para instalarlo:
 
-1. Clona con `gh repo clone AloreBB/claude-statusline /tmp/claude-statusline` (es privado, usa `gh`, no WebFetch). Si ya existe, haz `git -C /tmp/claude-statusline pull`.
+1. Clona con `git clone https://github.com/AloreBB/claude-statusline.git /tmp/claude-statusline`. Si ya existe, haz `git -C /tmp/claude-statusline pull`.
 2. Si falta alguna dependencia (`jq`, `curl`, `unzip`), dile al usuario cuál y cómo instalarla; no la instales sin preguntar.
 3. Corre `bash /tmp/claude-statusline/install.sh` y muestra su salida.
 4. Si el settings tenía otro `statusLine` (por ejemplo `npx ccstatusline`), avisa que fue reemplazado. Si era ccstatusline, ofrece borrar `~/.config/ccstatusline` y desinstalarlo (`npm uninstall -g ccstatusline`).
