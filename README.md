@@ -1,6 +1,6 @@
 # claude-statusline
 
-Status line para Claude Code con la paleta de [alore.dev](https://alore.dev) y un dato que cambia en cada mensaje: noticias, hoy en la historia, tips de comandos que tienes instalados, tendencias de Wikipedia y Hacker News.
+Status line para Claude Code con la paleta de [alore.dev](https://alore.dev) y un dato que cambia en cada mensaje: noticias, hoy en la historia, tips de comandos que tienes instalados, tendencias de Wikipedia, Hacker News y tus issues asignados.
 
 ![preview](preview.png)
 
@@ -38,6 +38,9 @@ Las barras pasan de verde a amarillo a rojo según se llenan.
 | `❯ tip` | [tldr-pages](https://github.com/tldr-pages/tldr) de comandos instalados en tu máquina | semanal |
 | `↗ tendencia` | Más leídos hoy en Wikipedia ES | diario |
 | `▲ hacker news` | Top 30 de Hacker News | cada hora |
+| `◎ issue` | Issues abiertos asignados a ti en GitHub; click abre el issue. Requiere [`gh`](https://cli.github.com) con sesión iniciada (sin él se omite) | cada 30 min |
+
+En repos de GitHub o GitLab, la línea 1 muestra `+ issue`: click abre el formulario para crear un issue nuevo.
 
 Si una fuente falla se usa otra; los errores quedan en `~/.cache/claude-statusline/fact.log`.
 

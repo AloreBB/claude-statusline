@@ -101,6 +101,13 @@ if branch=$(git -C "$cwd" -c core.fsmonitor=false --no-optional-locks rev-parse 
   branch_label=$(paint "$SIGNAL" "⎇ $branch")
   url=$(repo_web_url "$branch") && branch_label=$(link "$url" "$branch_label")
   line1+="$SEP$branch_label"
+  # GitHub/GitLab: shortcut that opens the new-issue form for this repo
+  if base=$(repo_web_url HEAD); then
+    case $base in
+      https://github.com/*) line1+="$SEP$(link "$base/issues/new" "$(paint "$YELLOW" "+ issue")")" ;;
+      https://gitlab.com/*) line1+="$SEP$(link "$base/-/issues/new" "$(paint "$YELLOW" "+ issue")")" ;;
+    esac
+  fi
 fi
 
 worktree=$(j '.worktree.name')
@@ -155,6 +162,7 @@ case $tag in
   hoy\ en*)     icon="◆"; color=$AMBER ;;
   tip*)         icon="❯"; color=$SIGNAL ;;
   tendencia*)   icon="↗"; color=$SLATE ;;
+  issue*)       icon="◎"; color=$YELLOW ;;
   hacker\ news) icon="▲"; color=$HN_ORANGE ;;
   *)            icon="✧"; color=$SLATE ;;
 esac
