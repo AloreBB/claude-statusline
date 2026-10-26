@@ -65,10 +65,12 @@ Si te pasaron la URL de este repo para instalarlo:
 3. Corre `bash /tmp/claude-statusline/install.sh` y muestra su salida.
 4. Si el settings tenía otro `statusLine` (por ejemplo `npx ccstatusline`), avisa que fue reemplazado. Si era ccstatusline, ofrece borrar `~/.config/ccstatusline` y desinstalarlo (`npm uninstall -g ccstatusline`).
 5. Comprueba: `echo '{"workspace":{"current_dir":"'"$HOME"'"},"model":{"display_name":"Opus"}}' | bash ~/.claude/statusline.sh` debe imprimir varias líneas sin errores.
-6. Dile al usuario que se ve en el próximo refresh o al reiniciar Claude Code.
+6. Si corre dentro de tmux (`$TMUX` definido), revisa `tmux display -p '#{client_termfeatures}'`: si no incluye `hyperlinks`, ofrece agregar `set -as terminal-features ',*:hyperlinks'` a `~/.tmux.conf` (sin eso tmux descarta los enlaces). Aplica con `tmux set -as terminal-features ',*:hyperlinks'` y avisa que hay que desconectarse y volver a hacer attach.
+7. Dile al usuario que se ve en el próximo refresh o al reiniciar Claude Code.
 
 ## Notas
 
 - Los iconos son Unicode estándar (`● ▰ ▱ ✦ ◷ ◆ ◉ ▲ ❯`), no glifos powerline, así que no hace falta Nerd Font.
+- Los enlaces (rama y dato) usan OSC 8: funcionan en iTerm2, Ghostty, WezTerm, Kitty, VS Code y Terminal.app reciente. **En tmux** hay que habilitarlos con `set -as terminal-features ',*:hyperlinks'` en `~/.tmux.conf` (tmux ≥ 3.4) y volver a hacer attach.
 - Usa color truecolor (24 bits). Terminales sin truecolor muestran colores aproximados.
 - La paleta está al inicio de `statusline.sh` (`SIGNAL`, `SLATE`, `AMBER`…), por si quieres cambiarla. El texto principal usa el color por defecto de la terminal, así que se lee en temas claros y oscuros.
