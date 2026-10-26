@@ -30,6 +30,28 @@ SEP=" $(fg "$GRAPHITE")/$RESET "
 paint() { printf '%s%s%s' "$(fg "$1")" "$2" "$RESET"; }
 bold() { printf '\033[1m%s%s%s' "$(fg "$1")" "$2" "$RESET"; }
 
+# OSC 8 hyperlink: cmd/ctrl+click opens $1 in terminals that support it, plain text elsewhere
+link() { printf '\033]8;;%s\033\\%s\033]8;;\033\\' "$1" "$2"; }
+
+# Web URL for the repo's origin (or its branch on GitHub/GitLab). The remote comes from the
+# repo's own config, so only a plain https URL with an allowlisted charset gets through.
+repo_web_url() {
+  local url branch=$1
+  url=$(git -C "$cwd" config --get remote.origin.url 2>/dev/null) || return 1
+  url=$(printf '%s' "$url" | sed -E \
+    -e 's#^git@([^:/]+):#https://\1/#' \
+    -e 's#^ssh://([^@/]+@)?([^:/]+)(:[0-9]+)?/#https://\2/#' \
+    -e 's#^https?://[^@/]+@#https://#' \
+    -e 's#^http://#https://#' \
+    -e 's#(\.git)?/?$##')
+  [[ $url =~ ^https://[A-Za-z0-9._-]+/[A-Za-z0-9._~/%+-]+$ ]] || return 1
+  case $url in
+    https://github.com/* | https://gitlab.com/*)
+      [ "$branch" != HEAD ] && [[ $branch =~ ^[A-Za-z0-9._/+-]+$ ]] && url+="/tree/$branch" ;;
+  esac
+  printf '%s' "$url"
+}
+
 # ▰▰▰▱▱▱ gauge; filled cells fade signal → yellow → red along the bar
 gauge() {
   awk -v p="$1" -v w="$GAUGE_WIDTH" -v empty="$GRAPHITE" 'BEGIN {
@@ -75,7 +97,9 @@ line1="$(paint "$RED" ●)$(paint "$YELLOW" ●)$(paint "$GREEN" ●)  $(bold "$
 # runs filters or hooks (fsmonitor disabled too). Change counts are deliberately not shown,
 # since diffing the worktree runs clean filters defined by the repo's own config.
 if branch=$(git -C "$cwd" -c core.fsmonitor=false --no-optional-locks rev-parse --abbrev-ref HEAD 2>/dev/null); then
-  line1+="$SEP$(paint "$SIGNAL" "⎇ $branch")"
+  branch_label=$(paint "$SIGNAL" "⎇ $branch")
+  url=$(repo_web_url "$branch") && branch_label=$(link "$url" "$branch_label")
+  line1+="$SEP$branch_label"
 fi
 
 worktree=$(j '.worktree.name')
