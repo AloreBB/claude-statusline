@@ -10,7 +10,11 @@
 # (rate limit, compaction, PR review, context, diff size, cold cache, fast mode, late night, vim).
 
 input=$(cat)
+command -v jq >/dev/null 2>&1 || { echo "claude-statusline: falta jq (instálalo para ver el status line)"; exit 0; }
 j() { jq -r "$1 // empty" <<<"$input"; }
+
+# Directory and worktree names can hold control chars: strip them so they cannot inject terminal escapes
+clean() { printf '%s' "$1" | LC_ALL=C tr -d '\000-\037\177' | LC_ALL=C sed $'s/\xc2[\x80-\x9f]/?/g'; }
 
 # alore.dev palette (truecolor "r;g;b")
 SLATE="139;155;176"     # #8b9bb0
@@ -156,7 +160,7 @@ mascot() {
 
 # --- Line 1: location ---------------------------------------------------------
 cwd=$(j '.workspace.current_dir // .cwd')
-line1="$(paint "$RED" ●)$(paint "$YELLOW" ●)$(paint "$GREEN" ●)  $(bold "$TEXT" alore)$(bold "$SIGNAL" .)  $(paint "$SLATE" "${cwd/#$HOME/\~}")"
+line1="$(paint "$RED" ●)$(paint "$YELLOW" ●)$(paint "$GREEN" ●)  $(bold "$TEXT" alore)$(bold "$SIGNAL" .)  $(paint "$SLATE" "$(clean "${cwd/#$HOME/\~}")")"
 
 # cwd may be an untrusted checkout. Only read the branch name: rev-parse reads refs and never
 # runs filters or hooks (fsmonitor disabled too). Change counts are deliberately not shown,
@@ -174,7 +178,7 @@ if branch=$(git -C "$cwd" -c core.fsmonitor=false --no-optional-locks rev-parse 
   fi
 fi
 
-worktree=$(j '.worktree.name')
+worktree=$(clean "$(j '.worktree.name')")
 [ -n "$worktree" ] && line1+="$SEP$(paint "$YELLOW" "◇ $worktree")"
 
 hour=$((10#$(date +%H)))
