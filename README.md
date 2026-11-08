@@ -67,3 +67,7 @@ Si una fuente falla se usa otra; los errores quedan en `~/.cache/claude-statusli
 - Iconos Unicode estándar: no hace falta Nerd Font.
 - Los enlaces se abren con cmd/ctrl+click (iTerm2, Ghostty, WezTerm, Kitty, VS Code, Terminal.app). En tmux ≥ 3.4 agrega `set -as terminal-features ',*:hyperlinks'` a `~/.tmux.conf` y vuelve a hacer attach.
 - Colores truecolor; la paleta está al inicio de `statusline.sh`.
+
+## Licencia
+
+[Apache 2.0](LICENSE). Copyright 2026 Kevin Jovy.
