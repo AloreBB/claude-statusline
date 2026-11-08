@@ -10,13 +10,15 @@ Status line para Claude Code con la paleta de [alore.dev](https://alore.dev) y u
 curl -fsSL https://raw.githubusercontent.com/AloreBB/claude-statusline/main/install.sh | bash
 ```
 
-Requiere `bash`, `jq`, `curl`, `awk`, `unzip` y `git` (Linux o macOS). Respalda `~/.claude/settings.json` antes de tocarlo y no modifica tus otros hooks. Para actualizar, vuelve a correrlo. Se ve en el próximo refresh o al reiniciar Claude Code.
+Requiere `bash`, `jq`, `curl`, `awk`, `unzip` y `git` (Linux o macOS). Respalda `settings.json` y cualquier script que vaya a reemplazar (`*.bak-<fecha>`), y no modifica tus otros hooks. Respeta `CLAUDE_CONFIG_DIR` si lo usas. Para actualizar, vuelve a correrlo. Se ve en el próximo refresh o al reiniciar Claude Code.
 
 Desinstalar:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/AloreBB/claude-statusline/main/install.sh | bash -s -- --uninstall
 ```
+
+Quita solo lo suyo y restaura el status line que tenías antes de instalarlo. Si después cambiaste a otra herramienta, la deja como está.
 
 ## Qué muestra
 
